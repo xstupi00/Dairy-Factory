@@ -1,0 +1,12 @@
+## Directory-based project format:
+.idea/
+cmake-build-debug/
+CMakeLists.txt
+
+## output files
+*.out
+
+## Makefile
+.depend
+*.o
+milk-app
