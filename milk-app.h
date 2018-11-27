@@ -1,7 +1,13 @@
 #ifndef MILK_APP_H
 #define MILK_APP_H
 
+#include <ctime>
+#include <getopt.h>
+#include <iostream>
 #include <map>
+#include <fstream>
+#include <simlib.h>
+
 
 #ifdef DEBUG
 #define DEBUG_PRINT(...) do{ fprintf( stderr, __VA_ARGS__ ); } while( false )
@@ -13,6 +19,11 @@ const unsigned MINUTE = 60;
 const unsigned HOUR = 3600;
 const unsigned DAY = 86400;
 const unsigned WEEK = 604800;
+
+#define RECEPTION_LINES             6
+#define RECEPTION_SILOS_CAPACITY    640
+#define PROCESSING_SILOS_CAPACITY   1420
+
 
 enum Months {
     January, February, March, April, May, June, July, August, September, October, November, December, MONTH_COUNT
@@ -34,19 +45,19 @@ std::map<std::string, Months> map_months = {
 };
 
 
-const std::map<int, std::tuple<int, double, int, int>> monthly_details = {
-        {January,   std::make_tuple(31, 18.4805, 22750, 3000)},
-        {February,  std::make_tuple(28, 18.4600, 22250, 2680)},
-        {March,     std::make_tuple(31, 18.4804, 22250, 2500)},
-        {April,     std::make_tuple(30, 19.3900, 22571, 2500)},
-        {May,       std::make_tuple(31, 18.7000, 22114, 2500)},
-        {June,      std::make_tuple(30, 18.1500, 22663, 2700)},
-        {July,      std::make_tuple(31, 18.4900, 22312, 2300)},
-        {August,    std::make_tuple(31, 18.4900, 22900, 2250)},
-        {September, std::make_tuple(30, 18.4000, 22750, 2800)},
-        {October,   std::make_tuple(31, 18.2000, 22350, 2799)},
-        {November,  std::make_tuple(30, 18.5200, 22419, 2925)},
-        {December,  std::make_tuple(31, 18.4760, 22750, 2400)},
+const std::map<int, std::tuple<int, double, double, double>> monthly_details = {
+        {January,   std::make_tuple(31, 18.4805, 22.7500, 3.0000)},
+        {February,  std::make_tuple(28, 18.4600, 22.2500, 2.6800)},
+        {March,     std::make_tuple(31, 18.4804, 22.2500, 2.5000)},
+        {April,     std::make_tuple(30, 19.3900, 22.5710, 2.5000)},
+        {May,       std::make_tuple(31, 18.7000, 22.1140, 2.5000)},
+        {June,      std::make_tuple(30, 18.1500, 22.6630, 2.7000)},
+        {July,      std::make_tuple(31, 18.4900, 22.3120, 2.3000)},
+        {August,    std::make_tuple(31, 18.4900, 22.9000, 2.2500)},
+        {September, std::make_tuple(30, 18.4000, 22.7500, 2.8000)},
+        {October,   std::make_tuple(31, 18.2000, 22.3500, 2.7990)},
+        {November,  std::make_tuple(30, 18.5200, 22.4190, 2.9250)},
+        {December,  std::make_tuple(31, 18.4760, 22.7500, 2.4000)},
 };
 
 /** --help string. */

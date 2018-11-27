@@ -17,16 +17,23 @@
  * @brief
  */
 
-#include <iostream>
-#include <simlib.h>
-#include <getopt.h>
-
+#include <cstring>
 #include "milk-app.h"
 
-Facility Inspection("Inspection");
-Histogram Table("Table", 8, 1, 20);
+Facility Inspection("Inspection");              ///< 1 inspection line for check correctness of milk
+Facility Reception[RECEPTION_LINES];            ///< 6 reception lines for pumping milk from tanker to reception silos
+Store ReceptionSilos("ReceptionSilos", RECEPTION_SILOS_CAPACITY);    ///< 4 x 160 000 Liters
+Store ProcessingSilos("ProccesingSilog", PROCESSING_SILOS_CAPACITY);
+Histogram TankerTime("TankerTime", 0, 1000, 10);
 
-std::tuple<int, double, int, int> current_month;
+///< current month for modelling the frequency of dependencies on different periods of year
+std::tuple<int, double, double, double> current_month;
+
+///< custom statistics values
+std::map<std::string, int> stats = {
+        {"Infected Milk", 0},
+};
+
 
 unsigned long compute_seconds_of_year() {
     unsigned long seconds_of_year = 0;
@@ -36,6 +43,20 @@ unsigned long compute_seconds_of_year() {
     return seconds_of_year;
 }
 
+void print_stats(const std::string& file_name) {
+    Inspection.Output();
+    for(unsigned i = 0; i < RECEPTION_LINES; i++) {
+        Reception[i].Output();
+    }
+    ReceptionSilos.Output();
+    TankerTime.Output();
+
+    for (std::pair<std::string, int> stats_item: stats) {
+        std::ofstream file(file_name, std::ios_base::app | std::ios_base::out);
+        file << stats_item.first << " " << stats_item.second << std::endl;
+    }
+}
+
 class Tanker : public Process {
 public:
     double Arrival = 0.0;
@@ -43,9 +64,39 @@ public:
     void Behavior() override {
         Arrival = Time;
         Seize(Inspection);
-        Wait(10);
+        Wait(MINUTE);   ///< removal period of obtained milk sample from tanker
         Release(Inspection);
-        Table(Time - Arrival);
+
+        if (Random() > 0.005) { ///< successful inspection
+            double brought_milk = Normal(std::get<2>(current_month), std::get<3>(current_month));
+            int idx=0;
+            for (unsigned  i = 0; i < RECEPTION_LINES; i++)
+                if (Reception[i].QueueLen() < Reception[idx].QueueLen())
+                    idx = i;
+            Seize(Reception[idx]);
+
+            while (brought_milk > 0) {
+                Enter(ReceptionSilos, 1);
+                Wait(1.5 * MINUTE); ///< 40 000 Liters per Hour => 1000 Litres per 1.5 Minute
+                brought_milk--;
+            }
+            Release(Reception[idx]);
+        } else {    ///< unsuccesful inspection -> tanker leaving the system
+            stats.find("Infected Milk")->second++;
+        }
+        TankerTime(Time - Arrival);
+    }
+
+};
+
+class Processor : public Process {
+    void Behavior() override {
+        if (ReceptionSilos.Free() == RECEPTION_SILOS_CAPACITY) {
+            Passivate();
+        } else {
+            Enter(ProcessingSilos, 1);
+            Leave(ReceptionSilos, 1);
+        }
     }
 
 };
@@ -62,10 +113,7 @@ public:
 
     void Behavior() override {
         current_month = monthly_details.at(month);
-        //DEBUG_PRINT("Changing months: %d ->", month);
-        //DEBUG_PRINT("MM: %g\n", std::get<1>(current_month));
         (month + 1) % MONTH_COUNT ? month++ : month = 0;
-        //DEBUG_PRINT(" %d\n", month);
         Activate(Time + std::get<0>(current_month) * DAY);
     }
 };
@@ -73,9 +121,9 @@ public:
 
 class Generator : public Event {
     void Behavior() override {
-        (new Tanker)->Activate();\
-        DEBUG_PRINT("TANKER ARRIVAL: %g\n", std::get<1>(current_month));
-        Activate(Time + Exponential(std::get<1>(current_month)));
+        (new Tanker)->Activate();
+        DEBUG_PRINT("EXPONETIAL: %g (TIME: %g)\n", Exponential(std::get<1>(current_month)), Time);
+        Activate(Time + Exponential(std::get<1>(current_month) * MINUTE));
     }
 };
 
@@ -89,7 +137,7 @@ std::map<std::string, unsigned> process_args(int argc, char **argv) {
 
     std::map<std::string, unsigned> argv_map = {
             {"start_month", January},
-            {"sim_period", 0},
+            {"sim_period",  0},
     };
 
     ///< default period for simulation is two months
@@ -134,7 +182,8 @@ std::map<std::string, unsigned> process_args(int argc, char **argv) {
                         argv_map.find("sim_period")->second = period_value * compute_seconds_of_year();
                         break;
                     }
-                    default: {}
+                    default: {
+                    }
                 }
                 break;
             }
@@ -163,11 +212,12 @@ int main(int argc, char **argv) {
     std::map<std::string, unsigned> argv_map = process_args(argc, argv);
     std::cout << "Milk developing process" << std::endl;
     SetOutput("milk-app.out");
+    std::srand(std::time(0));
     Init(0, argv_map.at("sim_period"));
-    (new Month)->Init(argv_map.at("start_month"));
     (new Generator)->Activate();
+    (new Month)->Init(argv_map.at("start_month"));
+    (new Processor)->Activate();
     Run();
-    Inspection.Output();
-    Table.Output();
+    print_stats("milk-app.out");
     return 0;
 }
