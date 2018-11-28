@@ -16,6 +16,8 @@
 #define DEBUG_PRINT(...) do{ } while ( false )
 #endif
 
+# define WaitUntil(condition)  while(_WaitUntil(condition)) /*empty body*/;
+
 const unsigned MINUTE = 60;
 const unsigned HOUR = 3600;
 const unsigned DAY = 86400;

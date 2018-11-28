@@ -36,7 +36,7 @@ Store PasteurizationSilos("PasteurizationSilos", PASTEURIZATION_SILOS_CAPACITY);
 Store UltraPasteurizationSilos("UltraPasteurizationSilos", PASTEURIZATION_SILOS_CAPACITY);
 
 Histogram TankerTime("TankerTime", 0, 1000, 10);
-Queue Auxiliary_Queues[4];
+
 
 ///< current month for modelling the frequency of dependencies on different periods of year
 std::tuple<int, double, double, double> current_month;
@@ -84,12 +84,6 @@ public:
     void Behavior() override {
         Enter(PasteurizedBottleLines, 1);
         Leave(PasteurizationSilos);
-
-        if (!Auxiliary_Queues[2].Empty()) {
-            auto tmp = (Process *) Auxiliary_Queues[2].GetFirst();
-            tmp->Activate();
-        }
-
         Wait(PASTEURIZED_PACKAGING_PERIOD * MINUTE);
         Leave(PasteurizedBottleLines, 1);
     }
@@ -101,24 +95,11 @@ public:
         if (Random() < 0.25) {
             Seize(SmallBottleLine);
             Leave(UltraPasteurizationSilos, 1);
-
-            if (!Auxiliary_Queues[3].Empty()) {
-                auto tmp = (Process *) Auxiliary_Queues[3].GetFirst();
-                tmp->Activate();
-            }
-
             Wait(SMALL_BOTTLE_PACKAGING_PERIOD);
             Release(SmallBottleLine);
         } else {
             Enter(UltraPasteurizedBottleLines, 1);
             Leave(UltraPasteurizationSilos, 1);
-
-            if (!Auxiliary_Queues[3].Empty()) {
-                auto tmp = (Process *) Auxiliary_Queues[3].GetFirst();
-                DEBUG_PRINT("WAKE UP ULTRA! (%s) --- %d\n", tmp->Name(), UltraPasteurizationSilos.Free());
-                tmp->Activate();
-            }
-
             Wait(ULTRA_PASTEURIZED_PACKAGING_PERIOD * MINUTE);
             Leave(UltraPasteurizedBottleLines, 1);
         }
@@ -130,48 +111,23 @@ class Pasteurization : public Process {
 public:
     void Behavior() override {
         if (Random() < 0.5) {   ///< pasteurization line
-            int busy = (Pasteurizer.Busy() ? 1 : 0);
-            if (int(PasteurizationSilos.Free() - (Pasteurizer.QueueLen()+1+busy)) < 0) {
-                Auxiliary_Queues[2].Insert(this);
-                Passivate();
-            }
-
+            WaitUntil(PasteurizationSilos.Free() - (Pasteurizer.QueueLen() + Pasteurizer.Busy()) > 0);
             Seize(Pasteurizer);
-
             if (PasteurizationSilos.Free() <= 0) {
                 DEBUG_PRINT("PASTEURIZER: %d\n", PasteurizationSilos.Free());
             }
             Leave(HomogenizationSilos, 1);
-
-            if (!Auxiliary_Queues[2].Empty()) {
-                auto tmp = (Process *) Auxiliary_Queues[2].GetFirst();
-                tmp->Activate();
-            }
-
             Wait(PASTEURIZATION_PERIOD * MINUTE);
             Enter(PasteurizationSilos, 1);
             Release(Pasteurizer);
             (new PasteurizedPackaging)->Activate();
         } else {                ///< ultra pasteurization line
-            int busy = (UltraPasteurizer.Busy() ? 1 : 0);
-            if (int(UltraPasteurizationSilos.Free() - (UltraPasteurizer.QueueLen()+1+busy)) < 0) {
-                Auxiliary_Queues[3].Insert(this);
-                Passivate();
-            }
-
+            WaitUntil(UltraPasteurizationSilos.Free() - (UltraPasteurizer.QueueLen() + UltraPasteurizer.Busy()) > 0);
             Seize(UltraPasteurizer);
-
             if (UltraPasteurizationSilos.Free() <= 0) {
                 DEBUG_PRINT("ULTRAPASTEURIZER: %d (%s)\n", UltraPasteurizationSilos.Free(), this->Name());
             }
-
             Leave(HomogenizationSilos, 1);
-
-            if (!Auxiliary_Queues[1].Empty()) {
-                auto tmp = (Process *) Auxiliary_Queues[1].GetFirst();
-                tmp->Activate();
-            }
-
             Wait(ULTRA_PASTEURIZATION_PERIOD * MINUTE);
             Enter(UltraPasteurizationSilos, 1);
             Release(UltraPasteurizer);
@@ -184,25 +140,12 @@ public:
 class Homogenization : public Process {
 public:
     void Behavior() override {
-        int busy = (Homogenizer.Busy() ? 1 : 0);
-        if (int(HomogenizationSilos.Free() - (Homogenizer.QueueLen()+1+busy)) < 0) {
-            Auxiliary_Queues[1].Insert(this);
-            Passivate();
-        }
-
+        WaitUntil(HomogenizationSilos.Free() - (Homogenizer.QueueLen() + int(Homogenizer.Busy())) > 0);
         Seize(Homogenizer);
-
         if (HomogenizationSilos.Free() <= 0) {
             DEBUG_PRINT("HOMOGENIZER %d\n", HomogenizationSilos.Free());
         }
-
         Leave(ProcessingSilos, 1);
-
-        if (!Auxiliary_Queues[0].Empty()) {
-            auto tmp = (Process *) Auxiliary_Queues[0].GetFirst();
-            tmp->Activate();
-        }
-
         Wait(0.1 * MINUTE);
         Enter(HomogenizationSilos, 1);
         Release(Homogenizer);
@@ -213,31 +156,19 @@ public:
 class Clarification : public Process {
 public:
     void Behavior() override {
-
-        ///< content of ProcessingSilos with the currently processing milk
-        if (int(ProcessingSilos.Free() - (Clarifiers.Used() + Clarifiers.QueueLen() + 1)) < 0) { ///< no free space in ProcessingSilos
-            ///< must waiting on processing milk by next machines, that pumping from these silos
-            Auxiliary_Queues[0].Insert(this);
-            Passivate();
-        }
-
+        WaitUntil(ProcessingSilos.Free() - (Clarifiers.Used() +  Clarifiers.QueueLen() + 1) >= 0);
         Enter(Clarifiers, 1);
-
         if (ProcessingSilos.Free() - Clarifiers.Used() <= 0) {
             DEBUG_PRINT("CLARIFICATORS: 0\n");
         }
-
-        ///< milk is pumping to the Clarificator silos for its processing
         Leave(ReceptionSilos, 1);
-        if (Clarifiers.Free() > (CLARIFICATION_LINES >> 1)) {   ///< first half of clarificators processing faster
+        if (Clarifiers.Free() > (CLARIFICATION_LINES >> 1)) {
             Wait(FAST_CLARIFICATION_PERIOD * MINUTE);
-        } else {    ///< second half of clarificator processing slowly
+        } else {
             Wait(SLOW_CLARIFICATION_PERIOD * MINUTE);
         }
-        ///< milk is pumping from the Clarificator silos to Processing Silos after its processing (clarification)
         Enter(ProcessingSilos, 1);
         Leave(Clarifiers, 1);
-        ///< signal for next phase of whole process of developing of milk
         (new Homogenization)->Activate();
     }
 };
@@ -250,7 +181,6 @@ public:
     void Behavior() override {
         Arrival = Time;
         Seize(Inspection);
-        ///< removal period of obtained milk sample from tanker
         Wait(MINUTE);
         Release(Inspection);
 
