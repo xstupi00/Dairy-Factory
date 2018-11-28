@@ -1,3 +1,23 @@
+/**************************************************************
+ * Project:     DNS Export
+ * File:		milk-app.h
+ * Author:		Šimon Stupinský
+ * University: 	Brno University of Technology
+ * Faculty: 	Faculty of Information Technology
+ * Course:	    Network Applications and Network Administration
+ * Date:		27.11.2018
+ * Last change:	28.11.2018
+ *
+ * Subscribe:
+ *
+ **************************************************************/
+
+/**
+ * @file    milk-app.h
+ * @brief
+ */
+
+
 #ifndef MILK_APP_H
 #define MILK_APP_H
 

@@ -1,19 +1,19 @@
 /**************************************************************
  * Project:     DNS Export
- * File:		main.cpp
+ * File:		milk-app.cpp
  * Author:		Šimon Stupinský
  * University: 	Brno University of Technology
  * Faculty: 	Faculty of Information Technology
  * Course:	    Network Applications and Network Administration
  * Date:		27.11.2018
- * Last change:	27.11.2018
+ * Last change:	28.11.2018
  *
  * Subscribe:
  *
  **************************************************************/
 
 /**
- * @file    main.cpp
+ * @file    milk-app.cpp
  * @brief
  */
 
@@ -95,7 +95,7 @@ public:
         if (Random() < 0.25) {
             Seize(SmallBottleLine);
             Leave(UltraPasteurizationSilos, 1);
-            Wait(SMALL_BOTTLE_PACKAGING_PERIOD);
+            Wait(SMALL_BOTTLE_PACKAGING_PERIOD * MINUTE);
             Release(SmallBottleLine);
         } else {
             Enter(UltraPasteurizedBottleLines, 1);
@@ -111,25 +111,17 @@ class Pasteurization : public Process {
 public:
     void Behavior() override {
         if (Random() < 0.5) {   ///< pasteurization line
-            WaitUntil(PasteurizationSilos.Free() - (Pasteurizer.QueueLen() + Pasteurizer.Busy()) > 0);
+            Enter(PasteurizationSilos, 1);
             Seize(Pasteurizer);
-            if (PasteurizationSilos.Free() <= 0) {
-                DEBUG_PRINT("PASTEURIZER: %d\n", PasteurizationSilos.Free());
-            }
             Leave(HomogenizationSilos, 1);
             Wait(PASTEURIZATION_PERIOD * MINUTE);
-            Enter(PasteurizationSilos, 1);
             Release(Pasteurizer);
             (new PasteurizedPackaging)->Activate();
         } else {                ///< ultra pasteurization line
-            WaitUntil(UltraPasteurizationSilos.Free() - (UltraPasteurizer.QueueLen() + UltraPasteurizer.Busy()) > 0);
+            Enter(UltraPasteurizationSilos, 1);
             Seize(UltraPasteurizer);
-            if (UltraPasteurizationSilos.Free() <= 0) {
-                DEBUG_PRINT("ULTRAPASTEURIZER: %d (%s)\n", UltraPasteurizationSilos.Free(), this->Name());
-            }
             Leave(HomogenizationSilos, 1);
             Wait(ULTRA_PASTEURIZATION_PERIOD * MINUTE);
-            Enter(UltraPasteurizationSilos, 1);
             Release(UltraPasteurizer);
             (new UltraPasteurizedPackaging)->Activate();
         }
@@ -140,14 +132,10 @@ public:
 class Homogenization : public Process {
 public:
     void Behavior() override {
-        WaitUntil(HomogenizationSilos.Free() - (Homogenizer.QueueLen() + int(Homogenizer.Busy())) > 0);
-        Seize(Homogenizer);
-        if (HomogenizationSilos.Free() <= 0) {
-            DEBUG_PRINT("HOMOGENIZER %d\n", HomogenizationSilos.Free());
-        }
-        Leave(ProcessingSilos, 1);
-        Wait(0.1 * MINUTE);
         Enter(HomogenizationSilos, 1);
+        Seize(Homogenizer);
+        Leave(ProcessingSilos, 1);
+        Wait(HOMOGENIZATION_PERIOD * MINUTE);
         Release(Homogenizer);
         (new Pasteurization)->Activate();
     }
@@ -156,18 +144,14 @@ public:
 class Clarification : public Process {
 public:
     void Behavior() override {
-        WaitUntil(ProcessingSilos.Free() - (Clarifiers.Used() +  Clarifiers.QueueLen() + 1) >= 0);
+        Enter(ProcessingSilos, 1);
         Enter(Clarifiers, 1);
-        if (ProcessingSilos.Free() - Clarifiers.Used() <= 0) {
-            DEBUG_PRINT("CLARIFICATORS: 0\n");
-        }
         Leave(ReceptionSilos, 1);
         if (Clarifiers.Free() > (CLARIFICATION_LINES >> 1)) {
             Wait(FAST_CLARIFICATION_PERIOD * MINUTE);
         } else {
             Wait(SLOW_CLARIFICATION_PERIOD * MINUTE);
         }
-        Enter(ProcessingSilos, 1);
         Leave(Clarifiers, 1);
         (new Homogenization)->Activate();
     }
@@ -192,7 +176,6 @@ public:
                     idx = i;
                 }
             }
-            //DEBUG_PRINT("SELECT no. %d: %d\n", idx,  Reception[idx].QueueLen());
             Seize(Reception[idx]);
 
             while (brought_milk > 0) {
