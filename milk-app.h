@@ -1,11 +1,12 @@
 #ifndef MILK_APP_H
 #define MILK_APP_H
 
+#include <cstring>
 #include <ctime>
+#include <fstream>
 #include <getopt.h>
 #include <iostream>
 #include <map>
-#include <fstream>
 #include <simlib.h>
 
 
@@ -20,9 +21,25 @@ const unsigned HOUR = 3600;
 const unsigned DAY = 86400;
 const unsigned WEEK = 604800;
 
-#define RECEPTION_LINES             6
-#define RECEPTION_SILOS_CAPACITY    640
-#define PROCESSING_SILOS_CAPACITY   1420
+#define RECEPTION_LINES                     6
+#define CLARIFICATION_LINES                 4
+#define PASTEURIZATION_LINES                2
+#define PASTEURIZED_BOTTLE_LINES            3
+#define ULTRA_PASTEURIZED_BOTTLE_LINES      4
+#define RECEPTION_SILOS_CAPACITY            640
+#define PROCESSING_SILOS_CAPACITY           1420
+#define HOMOGENIZATION_SILOS_CAPACITY       1000
+#define PASTEURIZATION_SILOS_CAPACITY       18
+#define PUMPING_FROM_TANKER_PERIOD          1.5
+#define FAST_CLARIFICATION_PERIOD           2.4
+#define SLOW_CLARIFICATION_PERIOD           3.0
+#define HOMOGENIZATION_PERIOD               3.0
+#define PASTEURIZATION_PERIOD               2
+#define PASTEURIZED_PACKAGING_PERIOD        4
+#define ULTRA_PASTEURIZED_PACKAGING_PERIOD  5
+#define SMALL_BOTTLE_PACKAGING_PERIOD       12
+#define ULTRA_PASTEURIZATION_PERIOD         .15
+#define PROBABILITY_OF_INFECTED_MILK        .005
 
 
 enum Months {
@@ -30,18 +47,18 @@ enum Months {
 };
 
 std::map<std::string, Months> map_months = {
-     {"January", January},
-     {"February", February},
-     {"March", March},
-     {"April", April},
-     {"May", May},
-     {"June", June},
-     {"July", July},
-     {"August", August},
-     {"September", September},
-     {"October", October},
-     {"November", November},
-     {"December", December},
+        {"January",   January},
+        {"February",  February},
+        {"March",     March},
+        {"April",     April},
+        {"May",       May},
+        {"June",      June},
+        {"July",      July},
+        {"August",    August},
+        {"September", September},
+        {"October",   October},
+        {"November",  November},
+        {"December",  December},
 };
 
 
@@ -62,11 +79,11 @@ const std::map<int, std::tuple<int, double, double, double>> monthly_details = {
 
 /** --help string. */
 static const char *help_str =
-"Program for simulating developing processing of milk in dairy factory.\n"
-"Usage: ./milk-app [OPTIONS] ...\n"
-"  -h                     : show this help and exit\n"
-"  -m, --month  <MONTH>   : set starting month of the simulation - default January\n"
-"  -p, --period <PERIOD>  : period of the simulation in count of some units - default 2 months\n"
-"                         : Nh (N hours) | N Nd (N days) | Nw (N weeks) | Nm (N months) | Ny (N years)\n";
+        "Program for simulating developing processing of milk in dairy factory.\n"
+                "Usage: ./milk-app [OPTIONS] ...\n"
+                "  -h                     : show this help and exit\n"
+                "  -m, --month  <MONTH>   : set starting month of the simulation - default January\n"
+                "  -p, --period <PERIOD>  : period of the simulation in count of some units - default 2 months\n"
+                "                         : Nh (N hours) | N Nd (N days) | Nw (N weeks) | Nm (N months) | Ny (N years)\n";
 
 #endif // MILK_APP_H
