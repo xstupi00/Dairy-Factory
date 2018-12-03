@@ -24,51 +24,55 @@ const unsigned HOUR = 3600;
 const unsigned DAY = 86400;
 const unsigned WEEK = 604800;
 
-#define INSPECTION_PERIOD                       (5.0 * MINUTE)
-#define PROBABILITY_INFECTED_MILK               0.005
 
-#define RECEPTION_LINES                         7
-#define RECEPTION_MILK_PUMPING_SPEED            (1.5 * MINUTE)
-#define RECEPTION_CREAM_PUMPING_SPEED           (4.0 * MINUTE)
+#define CLARIFICATION_CREAM_SILOS_CAPACITY      30
+#define CLARIFICATION_MILK_SILOS_CAPACITY       1700
 #define RECEPTION_MILK_SILOS_CAPACITY           450
 #define RECEPTION_DERIVATIVES_SILOS_CAPACITY    150
 #define RECEPTION_CREAM_SILOS_CAPACITY          80
 
+#define RECEPTION_LINES                         7
 #define CLARIFICATION_LINES                     4
+#define PASTEURIZATION_BOTTLE_MACHINES          3
+#define WHOLE_MILK_MACHINES_FAST                2
+#define WHOLE_MILK_MACHINES_SLOW                1
+#define LIGHT_MILK_MACHINES                     4
+#define LACTO_FREE_MILK_MACHINES                4
+#define STRAWBERRY_FLAVORED_MILK_MACHINES       2
+#define CHOLESTEROL_FREE_MILK_MACHINES          2
+#define STRAWBERRY_FRUIT_MILK_MACHINES_SLOW     3
+#define STRAWBERRY_FRUIT_MILK_MACHINES_FAST     1
+#define MANGO_FRUIT_MILK_MACHINES               2
+
+#define INSPECTION_PERIOD                       (5.0 * MINUTE)
+#define RECEPTION_MILK_PUMPING_SPEED            (1.5 * MINUTE)
+#define RECEPTION_CREAM_PUMPING_SPEED           (4.0 * MINUTE)
 #define CLARIFICATION_PROCESSING_SPEED_FAST     (2.0 * MINUTE)
 #define CLARIFICATION_PROCESSING_SPEED_SLOW     (2.4 * MINUTE)
-#define CLARIFICATION_MILK_SILOS_CAPACITY       1700
-#define CLARIFICATION_CREAM_SILOS_CAPACITY      30
 
-#define PASTEURIZATION_BOTTLE_MACHINES          3
 #define PASTEURIZATION_BOTTLE_MACHINES_SPEED    (3.34 * MINUTE)
-#define HOMOGENIZATION_PERIOD                   (1.5 * MINUTE)
-#define HOMOGENIZATION_PUMPING_SPEED            (2.0 * MINUTE)
-#define PASTEURIZATION_PERIOD                   (0.8 * MINUTE)
+#define HOMOGENIZATION_PERIOD                   (1.50 * MINUTE)
+#define HOMOGENIZATION_PUMPING_SPEED            (2.00 * MINUTE)
+#define PASTEURIZATION_PERIOD                   (0.80 * MINUTE)
 
-#define WHOLEMILK_MACHINES_FAST          2
-#define WHOLEMILK_MACHINES_SPEED_FAST    (5 * MINUTE)
-#define WHOLEMILK_MACHINES_SLOW          1
-#define WHOLEMILK_MACHINES_SPEED_SLOW    (10 * MINUTE)
-
-#define LIGHTMILK_MACHINES          4
-#define LIGHTMILK_MACHINES_SPEED    (10 * MINUTE)
-
-#define LACTOFREETMILK_MACHINES         4
-#define LACTOFREEMILK_MACHINES_SPEED    (10 * MINUTE)
-
-#define STRAWBERRY_FLAVORED_MILK_MACHINES           2
+#define WHOLE_MILK_MACHINES_SPEED_FAST              (5 * MINUTE)
+#define WHOLE_MILK_MACHINES_SPEED_SLOW              (10 * MINUTE)
+#define LIGHT_MILK_MACHINES_SPEED                   (10 * MINUTE)
+#define LACTO_FREE_MILK_MACHINES_SPEED              (10 * MINUTE)
 #define STRAWBERRY_FLAVORED_MILK_MACHINES_SPEED     (5 * MINUTE)
+#define CHOLESTEROL_FREE_MILK_MACHINES_SPEED        (10 * MINUTE)
+#define STRAWBERRY_FRUIT_MILK_MACHINES_SLOW_SPEED   (40 * MINUTE)
+#define STRAWBERRY_FRUIT_MILK_MACHINES_FAST_SPEED   (32 * MINUTE)
+#define MANGO_FRUIT_MILK_MACHINES_SPEED             (12 * MINUTE)
 
-#define CHOLESTEROL_FREE_MILK_MACHINES          2
-#define CHOLESTEROL_FREE_MILK_MACHINES_SPEED    (10 * MINUTE)
+#define PROBABILITY_INFECTED_MILK               0.005
 
 
 enum Months {
     January, February, March, April, May, June, July, August, September, October, November, December, MONTH_COUNT
 };
 
-std::map<std::string, Months> map_months = {
+std::map <std::string, Months> map_months = {
         {"January",   January},
         {"February",  February},
         {"March",     March},
@@ -99,18 +103,16 @@ const std::map<int, std::tuple<int, double, double, double>> monthly_details = {
         {December,  std::make_tuple(31, 18.4760, 22.7500, 2.4000)},
 };
 
-///< Whole Milk 1L - UP
-///< Light Milk 1L - UP
-///< Strawberry flavored milk 1L - UP
-///< UP milk with fruits 250ml (strawberry, mango) - UP
-
 /** --help string. */
 static const char *help_str =
-"Program for simulating developing processing of milk in dairy factory.\n"
-"Usage: ./milk-app [OPTIONS] ...\n"
-"  -h                     : show this help and exit\n"
-"  -m, --month  <MONTH>   : set starting month of the simulation - default January\n"
-"  -p, --period <PERIOD>  : period of the simulation in count of some units - default 2 months\n"
-"                         : Nh (N hours) | N Nd (N days) | Nw (N weeks) | Nm (N months) | Ny (N years)\n";
+        "Program for simulating developing processing of milk in dairy factory.\n"
+                "Usage: ./milk-app [OPTIONS] ...\n"
+                "  -h                     : show this help and exit\n"
+                "  -m, --month  <MONTH>   : set starting month of the simulation - default January\n"
+                "  -p, --period <PERIOD>  : period of the simulation in count of some units - default 2 months\n"
+                "                         : Nh (N hours) | N Nd (N days) | Nw (N weeks) | Nm (N months) | Ny (N years)\n";
+
+
+
 
 #endif // MILK_APP_H
