@@ -1,0 +1,69 @@
+
+class Production : public Event {
+    void Behavior() override {
+        std::default_random_engine generator;
+
+        current_daily_production.find("Pasteurized Milk")->second = 22;
+
+        double mu = 229537.93;
+        double sigma = 69776.62;
+        double normal_std = sqrt(log(1 + (sigma / mu) * (sigma / mu)));
+        double normal_mean = log(mu) - normal_std * normal_std / 2;
+        double whole_milk = Logar(normal_mean, normal_std);
+        //DEBUG_PRINT("Whole Milk: %.4f\n", whole_milk/3);
+
+        std::weibull_distribution<double> WeibullLight(10.119, 36666.36);
+        double light_milk = WeibullLight(generator);
+        //DEBUG_PRINT("Light Milk: %.4f\n", light_milk/3);
+
+        double drink_yogurt_strawberry_coco = Triag(25967.76, 40661.22, 221153);
+        //DEBUG_PRINT("Drink Milk Strawberry-Coconut: %.4f\n", drink_yogurt_strawberry_coco/3);
+
+        mu = 130621.49;
+        sigma = 47559.78;
+        normal_std = sqrt(log(1 + (sigma / mu) * (sigma / mu)));
+        normal_mean = log(mu) - normal_std * normal_std / 2;
+        double drink_yogurt_pineapple_coco = Logar(normal_mean, normal_std);
+        //DEBUG_PRINT("Drink Milk PineApple-Coconut: %.4f\n", drink_yogurt_pineapple_coco/3);
+
+        double strawberry_flavoured = Normal(63342.21, 16008);
+        //DEBUG_PRINT("Strawberry Flavoured: %.4f\n", strawberry_flavoured/3);
+
+        double ultra_strawberry_milk = Triag(0.65235, 0.65235, 35401.05);
+        //DEBUG_PRINT("Ultra Strawberry: %.4f\n", ultra_strawberry_milk/3);
+
+        double ultra_mango_milk = Triag(0.00276, 0.00276, 24286.53);
+        //DEBUG_PRINT("Ultra Mango: %.4f\n", ultra_mango_milk/3);
+
+        double cereal_yogurt_strawberry_nut = Uniform(1775.45, 3791.46);
+        //DEBUG_PRINT("Cereal Yogurt Strawberry-Nut: %.4f\n", cereal_yogurt_strawberry_nut/3);
+
+        double cereal_yogurt_peach_nut = Triag(0.02711, 0.02717, 11662.38278);
+        //DEBUG_PRINT("Cereal Yogurt Peach-Nut: %.4f\n", cereal_yogurt_peach_nut/3);
+
+        std::weibull_distribution<double> WeibullSmallCream(32.022, 1467150.23);
+        double small_cream = WeibullSmallCream(generator);
+        //DEBUG_PRINT("Small Cream: %.4f\n", small_cream/3);
+
+        std::weibull_distribution<double> WeibullBigCream(7.0071, 858032.40);
+        double big_cream = WeibullBigCream(generator);
+        //DEBUG_PRINT("Big Cream: %.4f\n", big_cream/3);
+
+        std::weibull_distribution<double> WeibullYogurtS(9.970, 201340);
+        double yogurt_strawberry = WeibullYogurtS(generator);
+        //DEBUG_PRINT("Yogurt Strawberry: %.4f\n", yogurt_strawberry/3);
+
+        double yogurt_peach = Normal(831686, 182164.92);
+        //DEBUG_PRINT("Yogurt Peach: %.4f\n", yogurt_peach/3);
+
+        double sum = (whole_milk + light_milk + drink_yogurt_pineapple_coco + drink_yogurt_strawberry_coco +
+                      strawberry_flavoured + ultra_mango_milk + ultra_strawberry_milk +
+                      cereal_yogurt_peach_nut + cereal_yogurt_strawberry_nut + small_cream + big_cream +
+                      yogurt_peach + yogurt_strawberry) / 30;
+
+        //DEBUG_PRINT("SUM = %.4f\n", sum );
+
+        //DEBUG_PRINT("-----------------\n");
+        Activate(Time + (DAY * 7) + 1);
+    }
+};

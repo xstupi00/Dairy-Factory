@@ -1,13 +1,16 @@
 #ifndef MILK_APP_H
 #define MILK_APP_H
 
+#include <algorithm>
 #include <cstring>
 #include <ctime>
 #include <fstream>
 #include <getopt.h>
 #include <iostream>
 #include <map>
+#include <random>
 #include <simlib.h>
+#include <vector>
 
 
 #ifdef DEBUG
@@ -21,24 +24,44 @@ const unsigned HOUR = 3600;
 const unsigned DAY = 86400;
 const unsigned WEEK = 604800;
 
-#define RECEPTION_LINES                     6
-#define CLARIFICATION_LINES                 4
-#define PASTEURIZED_BOTTLE_LINES            3
-#define ULTRA_PASTEURIZED_BOTTLE_LINES      4
-#define RECEPTION_SILOS_CAPACITY            640
-#define PROCESSING_SILOS_CAPACITY           1420
-#define STANDARDIZATION_SILOS_CAPACITY      1000
-#define PASTEURIZATION_SILOS_CAPACITY       1800
-#define PUMPING_FROM_TANKER_PERIOD          1.5
-#define FAST_CLARIFICATION_PERIOD           2.4
-#define SLOW_CLARIFICATION_PERIOD           3.0
-#define STANDARDIZATION_PERIOD              0
-#define PASTEURIZATION_PERIOD               .15
-#define PASTEURIZED_PACKAGING_PERIOD        5
-#define ULTRA_PASTEURIZED_PACKAGING_PERIOD  10
-#define SMALL_BOTTLE_PACKAGING_PERIOD       32
-#define ULTRA_PASTEURIZATION_PERIOD         .02
-#define PROBABILITY_OF_INFECTED_MILK        .005
+#define INSPECTION_PERIOD                       (5.0 * MINUTE)
+#define PROBABILITY_INFECTED_MILK               0.005
+
+#define RECEPTION_LINES                         7
+#define RECEPTION_MILK_PUMPING_SPEED            (1.5 * MINUTE)
+#define RECEPTION_CREAM_PUMPING_SPEED           (4.0 * MINUTE)
+#define RECEPTION_MILK_SILOS_CAPACITY           450
+#define RECEPTION_DERIVATIVES_SILOS_CAPACITY    150
+#define RECEPTION_CREAM_SILOS_CAPACITY          80
+
+#define CLARIFICATION_LINES                     4
+#define CLARIFICATION_PROCESSING_SPEED_FAST     (2.0 * MINUTE)
+#define CLARIFICATION_PROCESSING_SPEED_SLOW     (2.4 * MINUTE)
+#define CLARIFICATION_MILK_SILOS_CAPACITY       1700
+#define CLARIFICATION_CREAM_SILOS_CAPACITY      30
+
+#define PASTEURIZATION_BOTTLE_MACHINES          3
+#define PASTEURIZATION_BOTTLE_MACHINES_SPEED    (3.34 * MINUTE)
+#define HOMOGENIZATION_PERIOD                   (1.5 * MINUTE)
+#define HOMOGENIZATION_PUMPING_SPEED            (2.0 * MINUTE)
+#define PASTEURIZATION_PERIOD                   (0.8 * MINUTE)
+
+#define WHOLEMILK_MACHINES_FAST          2
+#define WHOLEMILK_MACHINES_SPEED_FAST    (5 * MINUTE)
+#define WHOLEMILK_MACHINES_SLOW          1
+#define WHOLEMILK_MACHINES_SPEED_SLOW    (10 * MINUTE)
+
+#define LIGHTMILK_MACHINES          4
+#define LIGHTMILK_MACHINES_SPEED    (10 * MINUTE)
+
+#define LACTOFREETMILK_MACHINES         4
+#define LACTOFREEMILK_MACHINES_SPEED    (10 * MINUTE)
+
+#define STRAWBERRY_FLAVORED_MILK_MACHINES           2
+#define STRAWBERRY_FLAVORED_MILK_MACHINES_SPEED     (5 * MINUTE)
+
+#define CHOLESTEROL_FREE_MILK_MACHINES          2
+#define CHOLESTEROL_FREE_MILK_MACHINES_SPEED    (10 * MINUTE)
 
 
 enum Months {
@@ -75,6 +98,11 @@ const std::map<int, std::tuple<int, double, double, double>> monthly_details = {
         {November,  std::make_tuple(30, 18.5200, 22.4190, 2.9250)},
         {December,  std::make_tuple(31, 18.4760, 22.7500, 2.4000)},
 };
+
+///< Whole Milk 1L - UP
+///< Light Milk 1L - UP
+///< Strawberry flavored milk 1L - UP
+///< UP milk with fruits 250ml (strawberry, mango) - UP
 
 /** --help string. */
 static const char *help_str =
