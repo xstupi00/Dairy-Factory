@@ -22,7 +22,6 @@
 Facility Inspection("Inspection");
 Facility ReceptionLines[RECEPTION_LINES];
 Store ReceptionMilkSilos("ReceptionMilkSilos", RECEPTION_MILK_SILOS_CAPACITY);
-Store ReceptionDerivativesSilos("ReceptionDerivativesSilos", RECEPTION_DERIVATIVES_SILOS_CAPACITY);
 Store ReceptionCreamSilos("ReceptionCreamSilos", RECEPTION_CREAM_SILOS_CAPACITY);
 
 Queue ClarificatorsQueue;
@@ -52,8 +51,8 @@ Store MangoFrutiMilkMachines("MangoFruitMilkMachines", MANGO_FRUIT_MILK_MACHINES
 Store StandardizatorFast("StandardizatorFast", STANDARDIZATORS - 1);
 Store StandardizatorSlow("StandardizatorSlow", STANDARDIZATORS - 2);
 Store StandardizatorTank("StandardizatorTank", STANDARDIZATORS_TANKS_CAPACITY);
-Store CreamPasteurizatorsFast("CreamPasteurizatorsFast", CREAM_PASTEURIZERS_FAST);
-Store CreamPasteurizatorsSlow("CreamPasteurizatorsSlow", CREAM_PASTEURIZERS_SLOW);
+Store CreamPasteurizatorsFast("CreamPasteurizatorsFast", CREAM_PASTEURIZERS - 1);
+Store CreamPasteurizatorsSlow("CreamPasteurizatorsSlow", CREAM_PASTEURIZERS - 2);
 Store CreamBottleMachines("CreamBottleMachines", CREAM_BOTTLE_MACHINES);
 Store CreamBottleTank("CreamBottleTank", CREAM_BOTTLE_TANKS_CAPACITY);
 Queue StandardizatorsQueue;
@@ -92,7 +91,7 @@ unsigned waiting_milk() {
 }
 
 void ClarificationActivate() {
-    if (!ClarificatorsQueue.Empty()) {
+    if (not ClarificatorsQueue.Empty()) {
         auto tmp = (Process *) ClarificatorsQueue.GetFirst();
         tmp->Activate();
     }
@@ -110,23 +109,22 @@ private:
 public:
     UltraPasteurizedMilk(Store *processing_machine_first, Store *processing_machine_second,
                          unsigned processing_period_first, unsigned processing_period_second, bool liter = true) {
-        this->ProcessingMachineFirst = processing_machine_first;
-        this->ProcessingMachineSecond = processing_machine_second;
-        this->ProcessingPeriodFirst = processing_period_first;
-        this->ProcessingPeriodSecond = processing_period_second;
-        this->liter_presentation = liter;
+        ProcessingMachineFirst = processing_machine_first;
+        ProcessingMachineSecond = processing_machine_second;
+        ProcessingPeriodFirst = processing_period_first;
+        ProcessingPeriodSecond = processing_period_second;
+        liter_presentation = liter;
     }
 
     void Behavior() override {
         Store *ProcessingMachine;
         double ProcessingPeriod;
-        if (this->ProcessingMachineFirst->Free() or not this->ProcessingMachineSecond or
-            not this->ProcessingMachineSecond->Free()) {
-            ProcessingMachine = this->ProcessingMachineFirst;
-            ProcessingPeriod = this->ProcessingPeriodFirst;
+        if (ProcessingMachineFirst->Free() or not ProcessingMachineSecond or not ProcessingMachineSecond->Free()) {
+            ProcessingMachine = ProcessingMachineFirst;
+            ProcessingPeriod = ProcessingPeriodFirst;
         } else {
-            ProcessingMachine = this->ProcessingMachineSecond;
-            ProcessingPeriod = this->ProcessingPeriodSecond;
+            ProcessingMachine = ProcessingMachineSecond;
+            ProcessingPeriod = ProcessingPeriodSecond;
         }
 
         Enter(*ProcessingMachine, 1);
@@ -134,7 +132,7 @@ public:
         Leave(ClarificationMilkSilos, 1);
         ClarificationActivate();
         Wait(ProcessingPeriod);
-        this->liter_presentation ? Enter(FactoryStoreLiterBottle, 1) : Enter(FactoryStoreLittleBottle, 1);
+        liter_presentation ? Enter(FactoryStoreLiterBottle, 1) : Enter(FactoryStoreLittleBottle, 1);
         Leave(*ProcessingMachine, 1);
     }
 };
@@ -176,8 +174,6 @@ public:
             planned_production++;
             ClarificationMilkSilosCapacity--;
         }
-        //DEBUG_PRINT("END = %d (%d) || %d || %d\n", ClarificationMilkSilos.Used(), ClarificationMilkSilosCapacity,
-        //            FluidMilkLines.Length(), waiting_milk());
     }
 };
 
@@ -196,7 +192,7 @@ public:
             ClarificationPeriod = CLARIFICATION_PROCESSING_SPEED_SLOW;
         }
 
-        this->Activate();
+        Activate();
     }
 
     void Behavior() override {
@@ -215,7 +211,7 @@ public:
                 Leave(*Clarificator, 1);
             } else {
                 ClarificatorsQueue.Insert(this);
-                this->Passivate();
+                Passivate();
             }
         }
     }
@@ -238,10 +234,8 @@ private:
             std::vector<std::tuple<int, int, int>> potentional_links;
             for (unsigned i = 0; i < RECEPTION_LINES; i++) {
                 if (ReceptionLines[i].QueueLen() <= ReceptionLines[index].QueueLen()) {
-                    long free_capacity = 0;
-                    if (i < 5) free_capacity = ReceptionMilkSilos.Free();
-                    else if (i == 5) free_capacity = ReceptionDerivativesSilos.Free();
-                    else if (i == 6) free_capacity = ReceptionCreamSilos.Free();
+                    long free_capacity = (i < RECEPTION_LINES - 2 ? ReceptionMilkSilos.Free()
+                                                                  : ReceptionCreamSilos.Free());
 
                     potentional_links.emplace_back(
                             std::make_tuple(free_capacity - (ReceptionLines[i].QueueLen() * 25),
@@ -250,7 +244,6 @@ private:
             }
 
             std::vector<int> silos_max_capacities = {RECEPTION_MILK_SILOS_CAPACITY,
-                                                     RECEPTION_DERIVATIVES_SILOS_CAPACITY,
                                                      RECEPTION_CREAM_SILOS_CAPACITY};
             unsigned empty_silos = 0;
             std::vector<int> empty_silos_indexes;
@@ -275,14 +268,6 @@ private:
                 auto best_links = std::max_element(potentional_links.begin(), potentional_links.end());
                 idx = std::get<2>(*best_links);
             }
-
-            /*for (auto &a: empty_silos_indexes) {
-                DEBUG_PRINT("Empty Silos: %d\n", a);
-            }
-
-            for (auto &a: potentional_links) {
-                DEBUG_PRINT("Index: %d -- %d -- %d\n", std::get<0>(a), std::get<1>(a), std::get<2>(a));
-            }*/
         } else {
             stats.find("Infected Milk")->second++;
         }
@@ -292,7 +277,6 @@ private:
 public:
     void Behavior() override {
         Arrival = Time;
-        //DEBUG_PRINT("TANKER: %g (Capacity: %d)\n", Time, ReceptionMilkSilos.Used());
 
         Seize(Inspection);
         Wait(INSPECTION_PERIOD);
@@ -300,54 +284,36 @@ public:
 
         int idx = get_free_reception_link();
         if (idx != -1) {
-            /*DEBUG_PRINT("WINNER = %d\n", idx);
-            DEBUG_PRINT("----------------\n");*/
 
             double brought_milk = Normal(std::get<2>(current_month), std::get<3>(current_month));
             stats.find("Received Milk")->second += brought_milk;
             Seize(ReceptionLines[idx]);
+
             if (idx < RECEPTION_LINES - 2) {
                 while (brought_milk > 1) {
                     Enter(ReceptionMilkSilos, 1);
                     Wait(RECEPTION_MILK_PUMPING_SPEED);
 
-                    if (not ClarificatorsQueue.Empty() and
-                        (ReceptionMilkSilos.Used() > 0.25 * RECEPTION_MILK_SILOS_CAPACITY or
-                         not FluidMilkLines.Empty())) {
+                    if (ReceptionMilkSilos.Used() > 0.40 * RECEPTION_MILK_SILOS_CAPACITY) {
                         while (not ClarificatorsQueue.Empty()) {
                             auto tmp = (Process *) ClarificatorsQueue.GetFirst();
                             tmp->Activate();
                         }
-                    } else {
-                        //DEBUG_PRINT("ACTIVATION: %d\n", FluidMilkLines.Length());
                     }
 
                     brought_milk -= 1;
                 }
-            } else if (idx == RECEPTION_LINES - 2) {
-                while (brought_milk > 1) {
-                    Enter(ReceptionDerivativesSilos, 1);
-                    Wait(RECEPTION_MILK_PUMPING_SPEED);
-
-                    if (not StandardizatorsQueue.Empty() and
-                        ReceptionDerivativesSilos.Used() > 0.25 * RECEPTION_DERIVATIVES_SILOS_CAPACITY) {
-                        auto tmp = (Process *) StandardizatorsQueue.GetFirst();
-                        tmp->Activate();
-                    }
-
-                    brought_milk -= 1;
-                }
-
-            } else if (idx == RECEPTION_LINES - 1) {
+            } else if (idx < RECEPTION_LINES) {
                 while (brought_milk > 1) {
                     Enter(ReceptionCreamSilos, 1);
                     Wait(RECEPTION_CREAM_PUMPING_SPEED);
 
-                    if (not StandardizatorsQueue.Empty() and
-                        ReceptionCreamSilos.Used() > 0.25 * RECEPTION_CREAM_SILOS_CAPACITY) {
-                        auto tmp = (Process *) StandardizatorsQueue.GetFirst();
-                        tmp->Activate();
-                    }
+                    //if (ReceptionCreamSilos.Used() > 0.25 * RECEPTION_CREAM_SILOS_CAPACITY) {
+                        while (not StandardizatorsQueue.Empty()) {
+                            auto tmp = (Process *) StandardizatorsQueue.GetFirst();
+                            tmp->Activate();
+                        }
+                    //}
 
                     brought_milk--;
                 }
@@ -363,7 +329,7 @@ class CreamPackaging : public Process {
 public:
     void Behavior() override {
         for (;;) {
-            if (int(CreamBottleTank.Used() - (CreamBottleMachines.Used() + CreamBottleMachines.QueueLen())) > 0) {
+            if (int(CreamBottleTank.Used()) - int(CreamBottleMachines.QueueLen()) > 0) {
                 Enter(CreamBottleMachines, 1);
                 Leave(CreamBottleTank, 1);
 
@@ -378,7 +344,7 @@ public:
                 break;
             } else {
                 CreamPackagingQueue.Insert(this);
-                this->Passivate();
+                Passivate();
             }
         }
 
@@ -392,14 +358,13 @@ class CreamPasteurization : public Process {
 public:
     void Init(bool is_slow) {
         if (not is_slow) {
-            this->CreamPasteurizator = &CreamPasteurizatorsFast;
-            this->PasteurizationPeriod = CREAM_PASTEURIZATORS_FAST_SPEED;
+            CreamPasteurizator = &CreamPasteurizatorsFast;
+            PasteurizationPeriod = CREAM_PASTEURIZATORS_FAST_SPEED;
         } else {
-            this->CreamPasteurizator = &CreamPasteurizatorsSlow;
-            this->PasteurizationPeriod = CREAM_PASTEURIZATORS_SLOW_SPEED;
+            CreamPasteurizator = &CreamPasteurizatorsSlow;
+            PasteurizationPeriod = CREAM_PASTEURIZATORS_SLOW_SPEED;
         }
-
-        this->Activate();
+        Activate();
     }
 
     void Behavior() override {
@@ -407,15 +372,15 @@ public:
         for (;;) {
             if (StandardizatorTank.Used() and
                 CreamBottleTank.Free() - (CreamPasteurizatorsSlow.Used() + CreamPasteurizatorsFast.Used()) > 0) {
-                Enter(*this->CreamPasteurizator, 1);
+                Enter(*CreamPasteurizator, 1);
                 Leave(StandardizatorTank, 1);
 
                 if (not StandardizatorsQueue.Empty()) {
                     auto tmp = (Process *) StandardizatorsQueue.GetFirst();
-                   tmp->Activate();
+                    tmp->Activate();
                 }
 
-                Wait(this->PasteurizationPeriod);
+                Wait(PasteurizationPeriod);
                 Enter(CreamBottleTank, 1);
 
                 if (not CreamPackagingQueue.Empty()) {
@@ -423,10 +388,10 @@ public:
                     tmp->Activate();
                 }
 
-                Leave(*this->CreamPasteurizator, 1);
+                Leave(*CreamPasteurizator, 1);
             } else {
                 CreamPasteurizatorsQueue.Insert(this);
-                this->Passivate();
+                Passivate();
             }
         }
     }
@@ -440,31 +405,25 @@ private:
 public:
     void Init(bool is_slow) {
         if (not is_slow) {
-            this->Standardizator = &StandardizatorFast;
-            this->StandardizationPeriod = STANDARDIZATORS_FAST_SPEED;
+            Standardizator = &StandardizatorFast;
+            StandardizationPeriod = STANDARDIZATORS_FAST_SPEED;
         } else {
-            this->Standardizator = &StandardizatorSlow;
-            this->StandardizationPeriod = STANDARDIZATORS_SLOW_SPEED;
+            Standardizator = &StandardizatorSlow;
+            StandardizationPeriod = STANDARDIZATORS_SLOW_SPEED;
         }
-
-        this->Activate();
+        Activate();
     }
 
     void Behavior() override {
 
         for (;;) {
-            if ((ReceptionCreamSilos.Used() or ReceptionDerivativesSilos.Used())
-                and StandardizatorTank.Free() -
-                    (StandardizatorFast.Used() + StandardizatorSlow.Used()) > 0) {
-                Enter(*this->Standardizator, 1);
+            if (int(ReceptionCreamSilos.Used()) > 0 and
+                StandardizatorTank.Free() - (StandardizatorFast.Used() + StandardizatorSlow.Used()) > 0) {
+                Enter(*Standardizator, 1);
 
-                if (ReceptionCreamSilos.Used() * 0.53 > ReceptionDerivativesSilos.Used()) {
-                    Leave(ReceptionCreamSilos, 1);
-                } else {
-                    Leave(ReceptionDerivativesSilos, 1);
-                }
+                Leave(ReceptionCreamSilos, 1);
 
-                Wait(this->StandardizationPeriod);
+                Wait(StandardizationPeriod);
                 Enter(StandardizatorTank, 1);
 
                 if (not CreamPasteurizatorsQueue.Empty()) {
@@ -472,10 +431,10 @@ public:
                     tmp->Activate();
                 }
 
-                Leave(*this->Standardizator, 1);
+                Leave(*Standardizator, 1);
             } else {
                 StandardizatorsQueue.Insert(this);
-                this->Passivate();
+                Passivate();
             }
         }
     }
@@ -483,123 +442,98 @@ public:
 };
 
 
-class PasteurizedGenerator : public Event {
-private:
-    double milk_production = Uniform(18.1872, 21.7134);
-
-public:
-    void Behavior() override {
-        //DEBUG_PRINT("1: %g\n", milk_production);
-        FluidMilkLines.Insert(new PasteurizedMilk);
-        Activate(Time + (HOUR / milk_production));
+void activate_processing_machine(ProcessingMachines processing_machine_id, bool flag = false) {
+    switch (processing_machine_id) {
+        case Pasteurized: {
+            FluidMilkLines.Insert(new PasteurizedMilk);
+            break;
+        }
+        case WholeMilk: {
+            FluidMilkLines.Insert(new UltraPasteurizedMilk(WholeMilkMachinesFast, WholeMilkMachinesSlow,
+                                                           WHOLE_MILK_MACHINES_SPEED_FAST,
+                                                           WHOLE_MILK_MACHINES_SPEED_SLOW));
+            break;
+        }
+        case LightMilk: {
+            FluidMilkLines.Insert(new UltraPasteurizedMilk(LightMilkMachines, nullptr, LIGHT_MILK_MACHINES_SPEED, 0));
+            break;
+        }
+        case LactoFree: {
+            FluidMilkLines.Insert(
+                    new UltraPasteurizedMilk(LactoFreeMilkMachines, nullptr, LACTO_FREE_MILK_MACHINES_SPEED, 0));
+            break;
+        }
+        case StrawberryFlavored: {
+            FluidMilkLines.Insert(new UltraPasteurizedMilk(StrawberryFlavoredMilkMachines, nullptr,
+                                                           STRAWBERRY_FLAVORED_MILK_MACHINES_SPEED, 0));
+            break;
+        }
+        case CholesterolFree: {
+            FluidMilkLines.Insert(
+                    new UltraPasteurizedMilk(CholesterolFreeMilkMachines, nullptr, CHOLESTEROL_FREE_MILK_MACHINES_SPEED,
+                                             0));
+            break;
+        }
+        case StrawberryFruits: {
+            FluidMilkLines.Insert(
+                    new UltraPasteurizedMilk(StrawberryFruitMilkMachinesFast, StrawberryFruitMilkMachinesSlow,
+                                             STRAWBERRY_FRUIT_MILK_MACHINES_FAST_SPEED,
+                                             STRAWBERRY_FRUIT_MILK_MACHINES_SLOW_SPEED, false));
+            break;
+        }
+        case MangoFruits: {
+            FluidMilkLines.Insert(
+                    new UltraPasteurizedMilk(MangoFrutiMilkMachines, nullptr, MANGO_FRUIT_MILK_MACHINES_SPEED, 0,
+                                             false));
+            break;
+        }
+        case Cream: {
+            (new CreamPackaging)->Activate();
+            break;
+        }
+        case ClarificationMachine: {
+            (new Clarification)->Init(flag);
+            break;
+        }
+        case StandardizationMachine: {
+            (new Standardization)->Init(flag);
+            break;
+        }
+        case CreamPasteurizationMachine: {
+            (new CreamPasteurization)->Init(flag);
+            break;
+        }
+        default: {
+            break;
+        }
     }
-};
+}
 
 
-class WholeMilkGenerator : public Event {
+class ProductionGenerators : public Event {
 private:
-    double whole_milk = Uniform(18.0690, 21.1320);
+    double production_probability;
+    double current_month_id;
+    unsigned ProcessingMachineID;
+    std::pair<double, double> ProbabilityNum;
 
 public:
-    void Behavior() override {
-        //DEBUG_PRINT("2: %g\n", whole_milk);
-        FluidMilkLines.Insert(new UltraPasteurizedMilk(WholeMilkMachinesFast, WholeMilkMachinesSlow,
-                                                       WHOLE_MILK_MACHINES_SPEED_FAST,
-                                                       WHOLE_MILK_MACHINES_SPEED_SLOW));
-        Activate(Time + (HOUR / whole_milk));
+    ProductionGenerators(unsigned processing_machine_id, std::pair<double, double> probability_num) {
+        production_probability = 0;
+        current_month_id = std::get<1>(current_month);
+        ProcessingMachineID = processing_machine_id;
+        ProbabilityNum = probability_num;
+        Activate();
     }
-};
 
-
-class LightMilkGenerator : public Event {
-private:
-    double light_milk = Uniform(12.1056, 14.1452);
-
-public:
     void Behavior() override {
-        //DEBUG_PRINT("3: %g\n", light_milk);
-        FluidMilkLines.Insert(new UltraPasteurizedMilk(LightMilkMachines, nullptr, LIGHT_MILK_MACHINES_SPEED, 0));
-        Activate(Time + (HOUR / light_milk));
-    }
-};
+        if (std::get<1>(current_month) != current_month_id) {
+            current_month_id = std::get<1>(current_month);
+            production_probability = Uniform(ProbabilityNum.first, ProbabilityNum.second);
+        }
 
-class LactoFreeMilkGenerator : public Event {
-private:
-    double lacto_free_milk = Uniform(12.1056, 14.1452);
-
-public:
-    void Behavior() override {
-        //DEBUG_PRINT("4: %g\n", lacto_free_milk);
-        FluidMilkLines.Insert(
-                new UltraPasteurizedMilk(LactoFreeMilkMachines, nullptr, LACTO_FREE_MILK_MACHINES_SPEED, 0));
-        Activate(Time + (HOUR / lacto_free_milk));
-    }
-};
-
-class StrawberryFlavoredMilkGenerator : public Event {
-private:
-    double strawberry_flavored_milk = Uniform(12.1056, 14.1452);
-
-public:
-    void Behavior() override {
-        //DEBUG_PRINT("5: %g\n", strawberry_flavored_milk);
-        FluidMilkLines.Insert(
-                new UltraPasteurizedMilk(StrawberryFlavoredMilkMachines, nullptr,
-                                         STRAWBERRY_FLAVORED_MILK_MACHINES_SPEED, 0));
-        Activate(Time + (HOUR / strawberry_flavored_milk));
-    }
-};
-
-class CholesterolFreeMilkGenerator : public Event {
-private:
-    double cholesterol_free_milk = Uniform(8.0704, 9.6368);
-
-public:
-    void Behavior() override {
-        //DEBUG_PRINT("6: %g\n", cholesterol_free_milk);
-        FluidMilkLines.Insert(
-                new UltraPasteurizedMilk(CholesterolFreeMilkMachines, nullptr, CHOLESTEROL_FREE_MILK_MACHINES_SPEED,
-                                         0));
-        Activate(Time + (HOUR / cholesterol_free_milk));
-    }
-};
-
-class StrawberryFruitsMilkGenerator : public Event {
-private:
-    double strawberry_with_fruits = Uniform(5.0440, 6.0230);
-
-public:
-    void Behavior() override {
-        //DEBUG_PRINT("7: %g\n", strawberry_with_fruits);
-        FluidMilkLines.Insert(
-                new UltraPasteurizedMilk(StrawberryFruitMilkMachinesFast, StrawberryFruitMilkMachinesSlow,
-                                         STRAWBERRY_FRUIT_MILK_MACHINES_FAST_SPEED,
-                                         STRAWBERRY_FRUIT_MILK_MACHINES_SLOW_SPEED, false));
-        Activate(Time + (HOUR / strawberry_with_fruits));
-    }
-};
-
-class MangoFruitsMilkGenerator : public Event {
-private:
-    double mango_with_fruits = Uniform(3.5308, 4.2161);
-
-public:
-    void Behavior() override {
-        //DEBUG_PRINT("8: %g\n", mango_with_fruits);
-        FluidMilkLines.Insert(
-                new UltraPasteurizedMilk(MangoFrutiMilkMachines, nullptr, MANGO_FRUIT_MILK_MACHINES_SPEED, 0, false));
-        Activate(Time + (HOUR / mango_with_fruits));
-    }
-};
-
-class CreamGenerator : public Event {
-private:
-    double cream_production = Uniform(60.2054, 69.5887);
-
-public:
-    void Behavior() override {
-        (new CreamPackaging)->Activate();
-        Activate(Time + (HOUR / this->cream_production));
+        activate_processing_machine(machines_mapping.at(ProcessingMachineID));
+        Activate(Time + (HOUR / production_probability));
     }
 };
 
@@ -608,33 +542,26 @@ class Initialization : public Event {
 private:
     unsigned month = 0;
 
+    void activate_machine(unsigned machines_count, unsigned machines_boundary, unsigned machine_id) {
+        for (unsigned i = 0; i < machines_count; i++) {
+            activate_processing_machine(machines_mapping.at(machine_id), i >= machines_boundary);
+        }
+    }
+
 public:
     void Init(unsigned start_month) {
-        for (unsigned i = 0; i < CLARIFICATION_LINES; i++) {
-            i < (CLARIFICATION_LINES >> 1) ? (new Clarification)->Init(false) : (new Clarification)->Init(true);
-        }
-
-        for (unsigned i = 0; i < STANDARDIZATORS; i++) {
-            i < (STANDARDIZATORS - 1) ? (new Standardization)->Init(false) : (new Standardization)->Init(true);
-        }
-
-        for (unsigned i = 0; i < CREAM_PASTEURIZERS_SLOW + CREAM_PASTEURIZERS_SLOW; i++) {
-            i < (CREAM_PASTEURIZERS_SLOW + CREAM_PASTEURIZERS_FAST - 1) ? (new CreamPasteurization)->Init(false)
-                                                                        : (new CreamPasteurization)->Init(true);
-        }
-
         month = start_month;
+
+        activate_machine(CLARIFICATION_LINES, (CLARIFICATION_LINES >> 1), ClarificationMachine);
+        activate_machine(STANDARDIZATORS, STANDARDIZATORS - 1, StandardizationMachine);
+        activate_machine(CREAM_PASTEURIZERS, CREAM_PASTEURIZERS - 1, CreamPasteurizationMachine);
+
         Activate();
-        (new PasteurizedGenerator)->Activate();
-        (new WholeMilkGenerator)->Activate();
-        (new LightMilkGenerator)->Activate();
-        (new LactoFreeMilkGenerator)->Activate();
-        (new StrawberryFlavoredMilkGenerator)->Activate();
-        (new CholesterolFreeMilkGenerator)->Activate();
         (new FluidMilkGenerator)->Activate();
-        (new StrawberryFruitsMilkGenerator)->Activate();
-        (new MangoFruitsMilkGenerator)->Activate();
-        (new CreamGenerator)->Activate();
+
+        for (unsigned i = 0; i < ProcessingMachineCount; i++) {
+            new ProductionGenerators(i, ProductionDetails.at(machines_mapping.at(i)));
+        }
     }
 
     void Behavior() override {
@@ -645,87 +572,9 @@ public:
 };
 
 
-class Production : public Process {
-    void Behavior() override {
-        Enter(ReceptionCreamSilos, RECEPTION_CREAM_SILOS_CAPACITY);
-        Enter(ReceptionMilkSilos, RECEPTION_MILK_SILOS_CAPACITY);
-        Enter(ReceptionDerivativesSilos, RECEPTION_DERIVATIVES_SILOS_CAPACITY);
-        Enter(ClarificationMilkSilos, CLARIFICATION_MILK_SILOS_CAPACITY);
-        Enter(CreamBottleTank, CREAM_BOTTLE_TANKS_CAPACITY);
-        Enter(StandardizatorTank, STANDARDIZATORS_TANKS_CAPACITY);
-
-        std::default_random_engine generator;
-
-        double mu = 229537.93;
-        double sigma = 69776.62;
-        double normal_std = sqrt(log(1 + (sigma / mu) * (sigma / mu)));
-        double normal_mean = log(mu) - normal_std * normal_std / 2;
-        std::lognormal_distribution<double> WholeMilk(normal_mean, normal_std);
-        double whole_milk = WholeMilk(generator);
-        DEBUG_PRINT("Whole Milk: %.4f\n", whole_milk/31);
-
-        std::weibull_distribution<double> WeibullLight(10.119, 36666.36);
-        double light_milk = WeibullLight(generator);
-        DEBUG_PRINT("Light Milk: %.4f\n", light_milk/31);
-
-        double drink_yogurt_strawberry_coco = Triag(25967.76, 40661.22, 221153);
-        DEBUG_PRINT("Drink Milk Strawberry-Coconut: %.4f\n", drink_yogurt_strawberry_coco/31);
-
-        mu = 130621.49;
-        sigma = 47559.78;
-        normal_std = sqrt(log(1 + (sigma / mu) * (sigma / mu)));
-        normal_mean = log(mu) - normal_std * normal_std / 2;
-        std::lognormal_distribution<double> DrinkMilk(normal_mean, normal_std);
-        double drink_yogurt_pineapple_coco = DrinkMilk(generator);
-        DEBUG_PRINT("Drink Milk PineApple-Coconut: %.4f\n", drink_yogurt_pineapple_coco/31);
-
-        double strawberry_flavoured = Normal(63342.21, 16008);
-        DEBUG_PRINT("Strawberry Flavoured: %.4f\n", strawberry_flavoured/31);
-
-        double ultra_strawberry_milk = Triag(0.65235, 0.65235, 35401.05);
-        DEBUG_PRINT("Ultra Strawberry: %.4f\n", ultra_strawberry_milk/31);
-
-        double ultra_mango_milk = Triag(0.00276, 0.00276, 24286.53);
-        DEBUG_PRINT("Ultra Mango: %.4f\n", ultra_mango_milk/31);
-
-        double cereal_yogurt_strawberry_nut = Uniform(1775.45, 3791.46);
-        //DEBUG_PRINT("Cereal Yogurt Strawberry-Nut: %.4f\n", cereal_yogurt_strawberry_nut/3);
-
-        double cereal_yogurt_peach_nut = Triag(0.02711, 0.02717, 11662.38278);
-        //DEBUG_PRINT("Cereal Yogurt Peach-Nut: %.4f\n", cereal_yogurt_peach_nut/3);
-
-        std::weibull_distribution<double> WeibullSmallCream(32.022, 1467150.23);
-        double small_cream = WeibullSmallCream(generator);
-        DEBUG_PRINT("Small Cream: %.4f\n", small_cream/30);
-
-        std::weibull_distribution<double> WeibullBigCream(7.0071, 858032.40);
-        double big_cream = WeibullBigCream(generator);
-        DEBUG_PRINT("Big Cream: %.4f\n", big_cream/30);
-
-        std::weibull_distribution<double> WeibullYogurtS(9.970, 201340);
-        double yogurt_strawberry = WeibullYogurtS(generator);
-        //DEBUG_PRINT("Yogurt Strawberry: %.4f\n", yogurt_strawberry/3);
-
-        double yogurt_peach = Normal(831686, 182164.92);
-        //DEBUG_PRINT("Yogurt Peach: %.4f\n", yogurt_peach/3);
-
-        double sum = (whole_milk + light_milk + drink_yogurt_pineapple_coco + drink_yogurt_strawberry_coco +
-                      strawberry_flavoured + ultra_mango_milk + ultra_strawberry_milk +
-                      cereal_yogurt_peach_nut + cereal_yogurt_strawberry_nut + small_cream + big_cream +
-                      yogurt_peach + yogurt_strawberry) / 30;
-
-        //DEBUG_PRINT("SUM = %.4f\n", sum );
-
-        //DEBUG_PRINT("-----------------\n");
-        //Activate(Time + (DAY * 7) + 1);
-    }
-};
-
-
 class Generator : public Event {
     void Behavior() override {
         (new Tanker)->Activate();
-        //DEBUG_PRINT("EXPONETIAL: %g (TIME: %g)\n", Exponential(std::get<1>(current_month)), Time);
         Activate(Time + Exponential(std::get<1>(current_month) * MINUTE));
     }
 };
@@ -761,35 +610,16 @@ std::map<std::string, unsigned> process_args(int argc, char **argv) {
             }
             case 'p': {
                 period = std::string(optarg);
-                switch (period.back()) {
-                    case 'h': {
-                        period_value = (unsigned) std::stoul(period.substr(0, period.size() - 1));
+                period_value = (unsigned) std::stoul(period.substr(0, std::string(optarg).size() - 1));
+                    if (period.back() == 'h') {
                         argv_map.find("sim_period")->second = period_value * HOUR;
-                        break;
-                    }
-                    case 'd': {
-                        period_value = (unsigned) std::stoul(period.substr(0, period.size() - 1));
+                    } else if (period.back() == 'd') {
                         argv_map.find("sim_period")->second = period_value * DAY;
-                        break;
-                    }
-                    case 'w': {
-                        period_value = (unsigned) std::stoul(period.substr(0, period.size() - 1));
-                        DEBUG_PRINT("WEEK: %d\n", period_value);
+                    } else if (period.back() == 'w') {
                         argv_map.find("sim_period")->second = period_value * WEEK;
-                        break;
+                    } else if (period.back() == 'y') {
+                        argv_map.find("sim_period")->second = period_value * unsigned(compute_seconds_of_year());
                     }
-                    case 'm': {
-                        period_value = (unsigned) std::stoul(period.substr(0, period.size() - 1));
-                        break;
-                    }
-                    case 'y': {
-                        period_value = (unsigned) std::stoul(period.substr(0, period.size() - 1));
-                        argv_map.find("sim_period")->second = period_value * compute_seconds_of_year();
-                        break;
-                    }
-                    default: {
-                    }
-                }
                 break;
             }
             default: {      ///< unknown arguments
@@ -816,7 +646,6 @@ std::map<std::string, unsigned> process_args(int argc, char **argv) {
 void print_stats() {
     TankersTime.Output();
     ReceptionMilkSilos.Output();
-    ReceptionDerivativesSilos.Output();
     ReceptionCreamSilos.Output();
     ClarificationLinesFast.Output();
     ClarificationLinesSlow.Output();
@@ -852,9 +681,6 @@ void print_stats() {
         ReceptionLine.Output();
     }
 
-    //for (auto &stat : stats) {
-    //    std::cout << stat.first << " = " << stat.second << std::endl;
-    //}
     DEBUG_PRINT("Received Milk: %d\n", stats.at("Received Milk"));
     DEBUG_PRINT("Rejected Milk: %d\n", stats.at("Infected Milk"));
 }
@@ -864,11 +690,11 @@ int main(int argc, char **argv) {
     std::map<std::string, unsigned> argv_map = process_args(argc, argv);
     std::cout << "Milk developing process" << std::endl;
     SetOutput("milk-app.out");
-    std::srand(std::time(0));
+    /* initialize random seed: */
+    srand(time(nullptr));
     ReceptionLines[RECEPTION_LINES - 1].SetName("CreamReceptionLines");
     DEBUG_PRINT("PERIOD: %d\n", argv_map.at("sim_period"));
     Init(0, argv_map.at("sim_period"));
-    (new Production)->Activate();
     (new Generator)->Activate();
     (new Initialization)->Init(argv_map.at("start_month"));
     Run();

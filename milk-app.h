@@ -25,10 +25,9 @@ const unsigned DAY = 86400;
 const unsigned WEEK = 604800;
 
 
-#define CLARIFICATION_MILK_SILOS_CAPACITY       1700
+#define CLARIFICATION_MILK_SILOS_CAPACITY       17
 #define RECEPTION_MILK_SILOS_CAPACITY           450
-#define RECEPTION_DERIVATIVES_SILOS_CAPACITY    150
-#define RECEPTION_CREAM_SILOS_CAPACITY          80
+#define RECEPTION_CREAM_SILOS_CAPACITY          230
 #define CREAM_BOTTLE_TANKS_CAPACITY             20
 #define STANDARDIZATORS_TANKS_CAPACITY          12
 
@@ -45,8 +44,7 @@ const unsigned WEEK = 604800;
 #define STRAWBERRY_FRUIT_MILK_MACHINES_FAST     1
 #define MANGO_FRUIT_MILK_MACHINES               2
 #define STANDARDIZATORS                         3
-#define CREAM_PASTEURIZERS_FAST                 2
-#define CREAM_PASTEURIZERS_SLOW                 1
+#define CREAM_PASTEURIZERS                      3
 #define CREAM_BOTTLE_MACHINES                   3
 
 #define INSPECTION_PERIOD                       (5.00 * MINUTE)
@@ -81,7 +79,50 @@ enum Months {
     January, February, March, April, May, June, July, August, September, October, November, December, MONTH_COUNT
 };
 
-std::map <std::string, Months> map_months = {
+enum ProcessingMachines {
+    Pasteurized,
+    WholeMilk,
+    LightMilk,
+    LactoFree,
+    StrawberryFlavored,
+    CholesterolFree,
+    StrawberryFruits,
+    MangoFruits,
+    Cream,
+    ProcessingMachineCount,
+    ClarificationMachine,
+    StandardizationMachine,
+    CreamPasteurizationMachine
+};
+
+std::map<unsigned, ProcessingMachines> machines_mapping = {
+        {0, Pasteurized},
+        {1, WholeMilk},
+        {2, LightMilk},
+        {3, LactoFree},
+        {4, StrawberryFlavored},
+        {5, CholesterolFree},
+        {6, StrawberryFruits},
+        {7, MangoFruits},
+        {8, Cream},
+        {10, ClarificationMachine},
+        {11, StandardizationMachine},
+        {12, CreamPasteurizationMachine},
+};
+
+const std::map<ProcessingMachines, std::pair<double, double>> ProductionDetails = {
+        {Pasteurized,           std::make_pair(14.1872, 17.7134)},
+        {WholeMilk,             std::make_pair(13.0690, 17.1320)},
+        {LightMilk,             std::make_pair(8.1056 , 10.1452)},
+        {LactoFree,             std::make_pair(7.1056 , 10.1452)},
+        {StrawberryFlavored,    std::make_pair(9.1056 , 11.1452)},
+        {CholesterolFree,       std::make_pair(6.0704 , 7.6368)},
+        {StrawberryFruits,      std::make_pair(4.0440 , 5.0230)},
+        {MangoFruits,           std::make_pair(3.5308 , 4.2161)},
+        {Cream,                 std::make_pair(14.2054, 17.5887)},
+};
+
+std::map<std::string, Months> map_months = {
         {"January",   January},
         {"February",  February},
         {"March",     March},
@@ -104,7 +145,7 @@ const std::map<int, std::tuple<int, double, double, double>> monthly_details = {
         {April,     std::make_tuple(30, 19.3900, 22.5710, 2.5000)},
         {May,       std::make_tuple(31, 18.7000, 22.1140, 2.5000)},
         {June,      std::make_tuple(30, 18.1500, 22.6630, 2.7000)},
-        {July,      std::make_tuple(31, 18.4900, 22.3120, 2.3000)},
+        {July,      std::make_tuple(31, 18.5000, 22.3120, 2.3000)},
         {August,    std::make_tuple(31, 18.4900, 22.9000, 2.2500)},
         {September, std::make_tuple(30, 18.4000, 22.7500, 2.8000)},
         {October,   std::make_tuple(31, 18.2000, 22.3500, 2.7990)},
@@ -120,8 +161,6 @@ static const char *help_str =
                 "  -m, --month  <MONTH>   : set starting month of the simulation - default January\n"
                 "  -p, --period <PERIOD>  : period of the simulation in count of some units - default 2 months\n"
                 "                         : Nh (N hours) | N Nd (N days) | Nw (N weeks) | Nm (N months) | Ny (N years)\n";
-
-
 
 
 #endif // MILK_APP_H
