@@ -1,12 +1,12 @@
 # **************************************************************
 # * Project:        Simulation of Milk Developing Process in Dairy Company
 # * File:		    Makefile
-# * Author:		    Šimon Stupinský
+# * Author:		    Šimon Stupinský, Tomáš Zubrík
 # * University:     Brno University of Technology
 # * Faculty: 	    Faculty of Information Technology
 # * Course:	        Modelling ang Simulation
-# * Date:		    27.11.2019
-# * Last change:    27.11.2019
+# * Date:		    27.11.2018
+# * Last change:    09.12.2018
 # *
 # * Subscribe:	Makefile
 # *
@@ -32,7 +32,10 @@ all: $(APP)
 debug: CPPFLAGS += -D DEBUG -g
 debug: $(APP)
 
-cd: all debug clean clean-all
+cd: all debug clean clean-all run
+
+run: $(APP)
+	./milk-app -m January -p 1y
 
 $(APP): $(OBJS)
 	$(CXX) -o $(APP) $(OBJS) $(LDLIBS)
